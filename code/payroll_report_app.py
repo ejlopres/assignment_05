@@ -1,19 +1,13 @@
 """
-payroll_report_app.py — the quarter at a glance, for someone who never opens a terminal.
-
-Every Friday since September the office manager at Salt City Coffee has downloaded
-a payroll export from the Assignment 04 app; before that she typed the same file
-by hand. The owner now wants to know where the hours went this quarter, the
-accountant wants pay by month and department, and the manager wants to see who
-has been missing shifts. This page answers all three from the pile of exports.
-
-Same shape as Assignment 04: the page *assembles* the pipeline — one call to
-`build_history` does the cleaning — and then shows the reports, filtered by the
-department and dates the user picks.
-
+payroll_report_app.py — the quarter at a glance.
+ 
+The page assembles the pipeline: one call to `build_history` does the cleaning,
+then the reports are shown for the department and dates the user picks.
+ 
 Run it:  Run and Debug -> "Streamlit Run: Current File"
 Test it: pytest tests/test_pipeline.py -k app
 """
+ 
 import streamlit as st
  
 from payroll import (
@@ -98,3 +92,4 @@ if uploads:
         mime="text/csv",
         key="download",
     )
+ 
