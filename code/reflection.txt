@@ -1,7 +1,30 @@
-Write your reflection here.
-
-See reflection.md for what makes a good reflection — be specific, use the
-terminology from this assignment (grain, long vs. wide, vectorized .str methods,
-coerce, NaT, pd.to_datetime format, .dt, concat, ignore_index, group by, named
-aggregation, reset_index, pivot_table, fill_value, melt, lineage), and make it
-actionable.
+What I built. A pipeline that turns twelve weekly payroll exports, seven hand-typed and five from the Assignment 04 app, into one clean history, then summarizes it three ways 
+(by employee, by week grid, by month and department) and shows it in a Streamlit page.
+ 
+Cleaning with vectorized .str methods. clean_employee_id was the lesson in why "just uppercase it" is not enough: " e004" and "E4" both look fine after .str.strip().str.upper(), 
+but "E4" only matches the roster once .str.zfill(3) pads the digits to "E004". Doing it on the whole column with .str replaced the apply-per-value habit from Assignment 04, 
+and the structure tests enforce it. In clean_number I used .str.replace with regex=False because "$" means end-of-string in a regular expression. pd.to_numeric(errors="coerce") 
+plus .fillna(0.0) is Assignment 02's "coerce and carry on" applied to a whole column: unreadable money becomes 0.0 instead of crashing the weekly run.
+ 
+Dates. A format= in pd.to_datetime is a promise about every value, so one call cannot read both "8/14/2026" and "2026-09-25". parse_pay_date parses twice with errors="coerce", 
+so each pass leaves NaT where the other style lives, and us.fillna(iso) combines them. Anything neither format reads stays NaT. Guessing the format is how "03/04/2026" becomes 
+April 3rd on one laptop. The .dt accessor then gave me week_ending and month labels with strftime. They are text on purpose, so "2026-08" sorts, reads well as a column header 
+and writes to CSV unchanged.
+ 
+Lineage versus grain. combine_exports, add_clean_columns, add_date_parts and add_roster are row-level steps: they return a wider copy, keep every raw column untouched 
+(the raw " e004" stays in employeeid and the clean value goes in employee_id), and never modify the caller's frame because each starts with .copy() or builds a new frame. 
+pd.concat with ignore_index=True prevents twelve separate row 0s. summarize_employees, hours_grid, missed_weeks and pay_by_month change the grain instead: one row per person 
+or per month rather than per person per week. That is allowed because they build a new table and leave the history alone. The add_roster merge is how="left" so an ID that is 
+not on the roster survives with NaN rather than silently vanishing from the totals.
+ 
+Group by, pivot and melt. summarize_employees uses groupby on three keys, named aggregation so the output columns are named correctly with no renaming, a lambda for the 
+overtime count (strictly over 40.0 hours), and reset_index() to bring the keys back as columns. pivot_table with fill_value=0 turned long rows into a wide grid where a missing 
+week is a 0, not NaN. Then melt turned the grid back to long so I could keep the zeros: an absence is never a row in an export, so the pivot-then-melt round trip is the only 
+way to create those rows.
+ 
+Debugging and testing. The scoped tests helped most. When a hand-built test passed but a real_quarter test failed, I knew the function was fine and the problem was upstream, 
+usually an ID that did not normalize, which shows up as NaN in department after add_roster. I used explore.py to look at each step's output before trusting it.
+ 
+What I would do next time. Run explore.py after every function instead of after several. Add a check that reports how many dates came back NaT after parse_pay_date, because a 
+silent NaT drops a row from every week-based report. And I would keep any unmatched-ID warning visible in the app, as I did, since a quiet merge mismatch is the easiest way to 
+produce a total that is wrong but looks plausible.
